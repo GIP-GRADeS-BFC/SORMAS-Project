@@ -164,15 +164,16 @@ public class EventParticipantService extends AbstractCoreAdoService<EventPartici
 
 		if (criteria.getFreeText() != null) {
 			String[] textFilters = criteria.getFreeText().split("\\s+");
-			for (int i = 0; i < textFilters.length; i++) {
-				String textFilter = formatForLike(textFilters[i]);
-				if (!DataHelper.isNullOrEmpty(textFilter)) {
-					Predicate likeFilters = cb.or(
-						cb.like(cb.lower(person.get(Person.FIRST_NAME)), textFilter),
-						cb.like(cb.lower(person.get(Person.LAST_NAME)), textFilter),
-						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter));
-					filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
+			for (String textFilter : textFilters) {
+				if (DataHelper.isNullOrEmpty(textFilter)) {
+					continue;
 				}
+
+				Predicate likeFilters = cb.or(
+					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
+					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
+					phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter));
+				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
 

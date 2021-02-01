@@ -10,6 +10,7 @@ import javax.persistence.criteria.From;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
+import de.symeda.sormas.api.utils.DataHelper;
 import org.apache.commons.lang3.StringUtils;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
@@ -49,12 +50,13 @@ public class AreaService extends AbstractInfrastructureAdoService<Area> {
 		Predicate filter = null;
 		if (StringUtils.isNotBlank(criteria.getTextFilter())) {
 			String[] textFilters = criteria.getTextFilter().split("\\s+");
-			for (String s : textFilters) {
-				String textFilter = "%" + s.toLowerCase() + "%";
-				if (StringUtils.isNotBlank(textFilter)) {
-					Predicate likeFilters = cb.or(cb.like(cb.lower(areaRoot.get(Region.NAME)), textFilter));
-					filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
+			for (String textFilter : textFilters) {
+				if (DataHelper.isNullOrEmpty(textFilter)) {
+					continue;
 				}
+
+				Predicate likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, areaRoot.get(Region.NAME), textFilter);
+				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
 		if (criteria.getRelevanceStatus() != null) {

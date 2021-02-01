@@ -98,13 +98,15 @@ public class CountryService extends AbstractInfrastructureAdoService<Country> {
         Predicate filter = null;
         if (criteria.getNameCodeLike() != null) {
             String[] textFilters = criteria.getNameCodeLike().split("\\s+");
-            for (int i = 0; i < textFilters.length; i++) {
-                String textFilter = "%" + textFilters[i].toLowerCase() + "%";
-                if (!DataHelper.isNullOrEmpty(textFilter)) {
-                    Predicate likeFilters =
-                            cb.or(cb.like(cb.lower(from.get(Country.ISO_CODE)), textFilter), cb.like(cb.lower(from.get(Country.UNO_CODE)), textFilter));
-                    filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
+            for (String textFilter : textFilters) {
+                if (DataHelper.isNullOrEmpty(textFilter)) {
+                    continue;
                 }
+
+                Predicate likeFilters = cb.or(
+                    CriteriaBuilderHelper.ilike(cb, from.get(Country.ISO_CODE), textFilter),
+                    CriteriaBuilderHelper.ilike(cb, from.get(Country.UNO_CODE), textFilter));
+                filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
             }
         }
         if (criteria.getRelevanceStatus() != null) {
