@@ -43,6 +43,8 @@ import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Subquery;
 import javax.validation.constraints.NotNull;
 
+import de.symeda.sormas.api.feature.FeatureType;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -124,6 +126,8 @@ public class ContactService extends AbstractCoreAdoService<Contact> {
 	private ExposureService exposureService;
 	@EJB
 	private VaccinationInfoService vaccinationInfoService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public ContactService() {
 		super(Contact.class);
@@ -1115,6 +1119,7 @@ public class ContactService extends AbstractCoreAdoService<Contact> {
 		if (contactCriteria.getDeleted() != null) {
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(from.get(Case.DELETED), contactCriteria.getDeleted()));
 		}
+		boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 		if (contactCriteria.getNameUuidCaseLike() != null) {
 			Join<Contact, Person> person = joins.getPerson();
 			Join<Person, Location> location = joins.getAddress();
@@ -1125,18 +1130,34 @@ public class ContactService extends AbstractCoreAdoService<Contact> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.ilike(cb, from.get(Contact.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, caze.get(Case.UUID), textFilter),
-					CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_ID), textFilter),
-					CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_TOKEN), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, casePerson.get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, casePerson.get(Person.LAST_NAME), textFilter),
-					phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, location.get(Location.CITY), textFilter),
-					CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(Contact.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_ID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_TOKEN), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, casePerson.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, casePerson.get(Person.LAST_NAME), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, location.get(Location.CITY), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(Contact.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_ID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, caze.get(Case.EXTERNAL_TOKEN), textFilter),
+						CriteriaBuilderHelper.ilike(cb, casePerson.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, casePerson.get(Person.LAST_NAME), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.CITY), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
@@ -1185,10 +1206,18 @@ public class ContactService extends AbstractCoreAdoService<Contact> {
 						continue;
 					}
 
-					Predicate likeFilters = cb.or(
-						CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_DESC), textFilter),
-						CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_TITLE), textFilter),
-						CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					Predicate likeFilters;
+					if (unaccentedSearchEnabled) {
+						likeFilters = cb.or(
+							CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_DESC), textFilter),
+							CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_TITLE), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					} else {
+						likeFilters = cb.or(
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.EVENT_DESC), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.EVENT_TITLE), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					}
 					filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 				}
 			}

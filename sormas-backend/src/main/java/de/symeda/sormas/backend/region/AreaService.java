@@ -2,6 +2,7 @@ package de.symeda.sormas.backend.region;
 
 import java.util.List;
 
+import javax.ejb.EJB;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -10,7 +11,9 @@ import javax.persistence.criteria.From;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.utils.DataHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import org.apache.commons.lang3.StringUtils;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
@@ -21,6 +24,9 @@ import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
 @Stateless
 @LocalBean
 public class AreaService extends AbstractInfrastructureAdoService<Area> {
+
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public AreaService() {
 		super(Area.class);
@@ -49,13 +55,19 @@ public class AreaService extends AbstractInfrastructureAdoService<Area> {
 	public Predicate buildCriteriaFilter(AreaCriteria criteria, CriteriaBuilder cb, Root<Area> areaRoot) {
 		Predicate filter = null;
 		if (StringUtils.isNotBlank(criteria.getTextFilter())) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getTextFilter().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, areaRoot.get(Region.NAME), textFilter);
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, areaRoot.get(Region.NAME), textFilter);
+				} else {
+					likeFilters = CriteriaBuilderHelper.ilike(cb, areaRoot.get(Region.NAME), textFilter);
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

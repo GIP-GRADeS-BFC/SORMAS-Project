@@ -104,6 +104,7 @@ The following features are currently configurable:
 * **Case Follow-Up** `CASE_FOLLOWUP`: Enables the contact follow-up module for cases as well to allow a more detailed daily documentation of symptoms.
 * **Line Listing** `LINE_LISTING`: Whether or not using line listing for case entry is enabled in the specified jurisdiction for the specified disease. Configurable from the UI, no database interaction needed.
 * **Documents** `DOCUMENTS`: Enables document storage.
+* **Unaccented searches** `UNACCENTED_SEARCHES`: Will make search accent insensitive in the web version of SORMAS (i.e. "Santé" and "Sante" will lead to the same results). Make sure to enable the extension `unaccent` in PostgreSQL before enabing it. To enable it, please execute the following query from a priviledged user in PostgreSQL: `CREATE EXTENSION unaccent;`
 
 ## Proxy Settings
 Some SORMAS integrations support proxy settings:

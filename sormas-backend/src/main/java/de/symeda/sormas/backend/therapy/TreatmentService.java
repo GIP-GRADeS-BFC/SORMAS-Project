@@ -15,7 +15,9 @@ import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.utils.DataHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import org.apache.commons.lang3.StringUtils;
 
 import de.symeda.sormas.api.therapy.TreatmentCriteria;
@@ -31,6 +33,8 @@ public class TreatmentService extends AdoServiceWithUserFilter<Treatment> {
 
 	@EJB
 	private CaseService caseService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public TreatmentService() {
 		super(Treatment.class);
@@ -131,6 +135,7 @@ public class TreatmentService extends AdoServiceWithUserFilter<Treatment> {
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(treatment.get(Treatment.TREATMENT_TYPE), criteria.getTreatmentType()));
 		}
 		if (!StringUtils.isEmpty(criteria.getTextFilter())) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getTextFilter().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
@@ -138,9 +143,16 @@ public class TreatmentService extends AdoServiceWithUserFilter<Treatment> {
 				}
 
 				// #1389: Disabled the possibility to search in TREATMENT_TYPE and TYPE_OF_DRUG
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, treatment.get(Treatment.TREATMENT_DETAILS), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, treatment.get(Treatment.EXECUTING_CLINICIAN), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, treatment.get(Treatment.TREATMENT_DETAILS), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, treatment.get(Treatment.EXECUTING_CLINICIAN), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, treatment.get(Treatment.TREATMENT_DETAILS), textFilter),
+						CriteriaBuilderHelper.ilike(cb, treatment.get(Treatment.EXECUTING_CLINICIAN), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

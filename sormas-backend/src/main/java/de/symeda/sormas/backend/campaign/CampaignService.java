@@ -3,6 +3,7 @@ package de.symeda.sormas.backend.campaign;
 import java.util.Date;
 import java.util.List;
 
+import javax.ejb.EJB;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -13,15 +14,20 @@ import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
 import de.symeda.sormas.api.campaign.CampaignCriteria;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.common.AbstractCoreAdoService;
 import de.symeda.sormas.backend.common.AbstractDomainObject;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.user.User;
 
 @Stateless
 @LocalBean
 public class CampaignService extends AbstractCoreAdoService<Campaign> {
+
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public CampaignService() {
 		super(Campaign.class);
@@ -52,15 +58,23 @@ public class CampaignService extends AbstractCoreAdoService<Campaign> {
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.between(from.get(Campaign.END_DATE), campaignCriteria.getEndDateAfter(), campaignCriteria.getEndDateAfter()));
 		}
 		if (campaignCriteria.getFreeText() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = campaignCriteria.getFreeText().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Campaign.NAME), textFilter),
-						CriteriaBuilderHelper.ilike(cb, from.get(Campaign.UUID), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+							CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Campaign.NAME), textFilter),
+							CriteriaBuilderHelper.ilike(cb, from.get(Campaign.UUID), textFilter));
+				} else {
+					likeFilters = cb.or(
+							CriteriaBuilderHelper.ilike(cb, from.get(Campaign.NAME), textFilter),
+							CriteriaBuilderHelper.ilike(cb, from.get(Campaign.UUID), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

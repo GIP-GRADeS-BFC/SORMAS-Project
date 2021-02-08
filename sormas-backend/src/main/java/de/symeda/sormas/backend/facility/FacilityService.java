@@ -34,9 +34,11 @@ import de.symeda.sormas.api.EntityRelevanceStatus;
 import de.symeda.sormas.api.facility.FacilityCriteria;
 import de.symeda.sormas.api.facility.FacilityDto;
 import de.symeda.sormas.api.facility.FacilityType;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.common.AbstractInfrastructureAdoService;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.region.Community;
 import de.symeda.sormas.backend.region.District;
 import de.symeda.sormas.backend.region.Region;
@@ -52,6 +54,9 @@ public class FacilityService extends AbstractInfrastructureAdoService<Facility> 
 
 	@EJB
 	private UserService userService;
+
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public FacilityService() {
 		super(Facility.class);
@@ -235,15 +240,23 @@ public class FacilityService extends AbstractInfrastructureAdoService<Facility> 
 				cb.equal(from.join(Facility.COMMUNITY, JoinType.LEFT).get(District.UUID), facilityCriteria.getCommunity().getUuid()));
 		}
 		if (facilityCriteria.getNameCityLike() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = facilityCriteria.getNameCityLike().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Facility.NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Facility.CITY), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Facility.NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Facility.CITY), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(Facility.NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Facility.CITY), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

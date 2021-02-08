@@ -13,12 +13,14 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.infrastructure.PointOfEntryCriteria;
 import de.symeda.sormas.api.infrastructure.PointOfEntryDto;
 import de.symeda.sormas.api.infrastructure.PointOfEntryType;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.common.AbstractInfrastructureAdoService;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.region.District;
 import de.symeda.sormas.backend.region.Region;
 import de.symeda.sormas.backend.region.RegionService;
@@ -29,6 +31,8 @@ public class PointOfEntryService extends AbstractInfrastructureAdoService<PointO
 
 	@EJB
 	private RegionService regionService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public PointOfEntryService() {
 		super(PointOfEntry.class);
@@ -113,13 +117,19 @@ public class PointOfEntryService extends AbstractInfrastructureAdoService<PointO
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(pointOfEntry.get(PointOfEntry.ACTIVE), criteria.getActive()));
 		}
 		if (criteria.getNameLike() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getNameLike().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, pointOfEntry.get(PointOfEntry.NAME), textFilter);
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, pointOfEntry.get(PointOfEntry.NAME), textFilter);
+				} else {
+					likeFilters = CriteriaBuilderHelper.ilike(cb, pointOfEntry.get(PointOfEntry.NAME), textFilter);
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

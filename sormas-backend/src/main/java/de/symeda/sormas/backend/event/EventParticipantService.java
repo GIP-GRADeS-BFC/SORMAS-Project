@@ -35,12 +35,14 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.event.EventParticipantCriteria;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.caze.Case;
 import de.symeda.sormas.backend.common.AbstractCoreAdoService;
 import de.symeda.sormas.backend.common.AbstractDomainObject;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
 import de.symeda.sormas.backend.contact.Contact;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.person.Person;
 import de.symeda.sormas.backend.sample.SampleService;
 import de.symeda.sormas.backend.sormastosormas.SormasToSormasShareInfoService;
@@ -61,6 +63,8 @@ public class EventParticipantService extends AbstractCoreAdoService<EventPartici
 	private EventParticipantJurisdictionChecker eventParticipantJurisdictionChecker;
 	@EJB
 	private SormasToSormasShareInfoService sormasToSormasShareInfoService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public EventParticipantService() {
 		super(EventParticipant.class);
@@ -163,16 +167,25 @@ public class EventParticipantService extends AbstractCoreAdoService<EventPartici
 		}
 
 		if (criteria.getFreeText() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getFreeText().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
-					phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.LAST_NAME), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

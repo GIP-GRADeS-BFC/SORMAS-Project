@@ -59,7 +59,11 @@ public enum FeatureType {
 	SURVEILLANCE_REPORTS(true,
 		false,
 		new FeatureType[] {
-			CASE_SURVEILANCE });
+			CASE_SURVEILANCE }),
+	// The following PostgreSQL query should be executed before enabling the UNACCENTED_SEARCHES feature:
+	// CREATE EXTENSION unaccent;
+	// This query needs to be executed from a priviledged user which make it unavailable for the patch system
+	UNACCENTED_SEARCHES(true, false, null);
 
 	/**
 	 * Server feature means that the feature only needs to be configured once per server since they define the way the system

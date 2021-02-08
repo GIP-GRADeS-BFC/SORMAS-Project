@@ -40,6 +40,8 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Subquery;
 
+import de.symeda.sormas.api.feature.FeatureType;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -95,6 +97,8 @@ public class EventService extends AbstractCoreAdoService<Event> {
 	private EventJurisdictionChecker eventJurisdictionChecker;
 	@EJB
 	private SormasToSormasShareInfoService sormasToSormasShareInfoService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public EventService() {
 		super(Event.class);
@@ -580,6 +584,7 @@ public class EventService extends AbstractCoreAdoService<Event> {
 				filter,
 				cb.equal(from.join(Event.RESPONSIBLE_USER, JoinType.LEFT).get(User.UUID), eventCriteria.getResponsibleUser().getUuid()));
 		}
+		boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 		if (StringUtils.isNotEmpty(eventCriteria.getFreeText())) {
 			String[] textFilters = eventCriteria.getFreeText().split("\\s+");
 
@@ -588,14 +593,26 @@ public class EventService extends AbstractCoreAdoService<Event> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.ilike(cb, from.get(Event.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.EVENT_TITLE), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.EVENT_DESC), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.SRC_FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.SRC_LAST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_EMAIL), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_TEL_NO), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.EVENT_TITLE), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.EVENT_DESC), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.SRC_FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Event.SRC_LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_EMAIL), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_TEL_NO), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.EVENT_TITLE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.EVENT_DESC), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_EMAIL), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Event.SRC_TEL_NO), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
@@ -609,12 +626,22 @@ public class EventService extends AbstractCoreAdoService<Event> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.ilike(cb, eventParticipantJoin.get(EventParticipant.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, personJoin.get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, personJoin.get(Person.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.PHONE), textFilter),
-					CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.EMAIL_ADDRESS), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, eventParticipantJoin.get(EventParticipant.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, personJoin.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, personJoin.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.EMAIL_ADDRESS), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, eventParticipantJoin.get(EventParticipant.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, personJoin.get(Person.EMAIL_ADDRESS), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

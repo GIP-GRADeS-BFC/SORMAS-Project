@@ -19,6 +19,7 @@ package de.symeda.sormas.backend.region;
 
 import java.util.List;
 
+import javax.ejb.EJB;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -29,14 +30,19 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.region.DistrictCriteria;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.common.AbstractInfrastructureAdoService;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 
 @Stateless
 @LocalBean
 public class DistrictService extends AbstractInfrastructureAdoService<District> {
+
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public DistrictService() {
 		super(District.class);
@@ -119,15 +125,23 @@ public class DistrictService extends AbstractInfrastructureAdoService<District> 
 				.and(cb, filter, cb.equal(from.join(District.REGION, JoinType.LEFT).get(Region.UUID), criteria.getRegion().getUuid()));
 		}
 		if (criteria.getNameEpidLike() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getNameEpidLike().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(District.NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(District.EPID_CODE), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(District.NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(District.EPID_CODE), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(District.NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(District.EPID_CODE), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

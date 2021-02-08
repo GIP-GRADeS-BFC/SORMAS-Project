@@ -35,6 +35,7 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.task.TaskContext;
 import de.symeda.sormas.api.task.TaskCriteria;
 import de.symeda.sormas.api.task.TaskPriority;
@@ -51,6 +52,7 @@ import de.symeda.sormas.backend.contact.Contact;
 import de.symeda.sormas.backend.contact.ContactService;
 import de.symeda.sormas.backend.event.Event;
 import de.symeda.sormas.backend.event.EventService;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.person.Person;
 import de.symeda.sormas.backend.region.District;
 import de.symeda.sormas.backend.region.Region;
@@ -69,6 +71,8 @@ public class TaskService extends AdoServiceWithUserFilter<Task> {
 	private EventService eventService;
 	@EJB
 	private UserService userService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public TaskService() {
 		super(Task.class);
@@ -275,6 +279,7 @@ public class TaskService extends AdoServiceWithUserFilter<Task> {
 						.otherwise(joins.getEventDistrict().get(District.UUID)));
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(district, taskCriteria.getDistrict().getUuid()));
 		}
+		boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 		if (taskCriteria.getFreeText() != null) {
 			String[] textFilters = taskCriteria.getFreeText().split("\\s+");
 			for (String textFilter : textFilters) {
@@ -282,15 +287,28 @@ public class TaskService extends AdoServiceWithUserFilter<Task> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCasePerson().get(Person.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCasePerson().get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, joins.getContact().get(Contact.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getContactPerson().get(Person.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getContactPerson().get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, joins.getEvent().get(Event.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getEvent().get(Event.EVENT_TITLE), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCasePerson().get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCasePerson().get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getContact().get(Contact.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getContactPerson().get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getContactPerson().get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getEvent().get(Event.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getEvent().get(Event.EVENT_TITLE), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getCasePerson().get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getCasePerson().get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getContact().get(Contact.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getContactPerson().get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getContactPerson().get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getEvent().get(Event.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getEvent().get(Event.EVENT_TITLE), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
@@ -301,10 +319,18 @@ public class TaskService extends AdoServiceWithUserFilter<Task> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.USER_NAME), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getAssignee().get(User.USER_NAME), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, joins.getAssignee().get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getAssignee().get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getAssignee().get(User.USER_NAME), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
@@ -315,11 +341,20 @@ public class TaskService extends AdoServiceWithUserFilter<Task> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.USER_NAME), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, joins.getCreator().get(User.USER_NAME), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, joins.getCaze().get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getCreator().get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getCreator().get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, joins.getCreator().get(User.USER_NAME), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

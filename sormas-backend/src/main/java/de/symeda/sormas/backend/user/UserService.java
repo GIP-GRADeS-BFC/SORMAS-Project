@@ -41,6 +41,7 @@ import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.AuthProvider;
 import de.symeda.sormas.api.facility.FacilityType;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.user.JurisdictionLevel;
 import de.symeda.sormas.api.user.UserCriteria;
 import de.symeda.sormas.api.user.UserRight;
@@ -52,6 +53,7 @@ import de.symeda.sormas.backend.common.AbstractDomainObject;
 import de.symeda.sormas.backend.common.AdoServiceWithUserFilter;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
 import de.symeda.sormas.backend.facility.Facility;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.region.District;
 import de.symeda.sormas.backend.region.Region;
 
@@ -61,6 +63,8 @@ public class UserService extends AdoServiceWithUserFilter<User> {
 
 	@EJB
 	private UserRoleConfigFacadeEjb.UserRoleConfigFacadeEjbLocal userRoleConfigFacade;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public UserService() {
 		super(User.class);
@@ -327,19 +331,31 @@ public class UserService extends AdoServiceWithUserFilter<User> {
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(from.join(Case.DISTRICT, JoinType.LEFT).get(District.UUID), userCriteria.getDistrict().getUuid()));
 		}
 		if (userCriteria.getFreeText() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = userCriteria.getFreeText().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.USER_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.USER_EMAIL), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(User.PHONE), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(User.UUID), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.USER_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(User.USER_EMAIL), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.UUID), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, from.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.USER_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.USER_EMAIL), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(User.UUID), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

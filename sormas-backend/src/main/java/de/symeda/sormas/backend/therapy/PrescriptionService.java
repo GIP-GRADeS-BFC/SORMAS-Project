@@ -15,14 +15,16 @@ import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
-import de.symeda.sormas.api.utils.DataHelper;
 import org.apache.commons.lang3.StringUtils;
 
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.therapy.PrescriptionCriteria;
+import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.caze.Case;
 import de.symeda.sormas.backend.caze.CaseService;
 import de.symeda.sormas.backend.common.AdoServiceWithUserFilter;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 import de.symeda.sormas.backend.user.User;
 
 @Stateless
@@ -31,6 +33,8 @@ public class PrescriptionService extends AdoServiceWithUserFilter<Prescription> 
 
 	@EJB
 	private CaseService caseService;
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public PrescriptionService() {
 		super(Prescription.class);
@@ -132,15 +136,23 @@ public class PrescriptionService extends AdoServiceWithUserFilter<Prescription> 
 		}
 		if (!StringUtils.isEmpty(criteria.getTextFilter())) {
 			String[] textFilters = criteria.getTextFilter().split("\\s+");
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
 				// #1389: Disabled the possibility to search in PRESCRIPTION_TYPE and TYPE_OF_DRUG
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, prescription.get(Prescription.PRESCRIPTION_DETAILS), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, prescription.get(Prescription.PRESCRIBING_CLINICIAN), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, prescription.get(Prescription.PRESCRIPTION_DETAILS), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, prescription.get(Prescription.PRESCRIBING_CLINICIAN), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, prescription.get(Prescription.PRESCRIPTION_DETAILS), textFilter),
+						CriteriaBuilderHelper.ilike(cb, prescription.get(Prescription.PRESCRIBING_CLINICIAN), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

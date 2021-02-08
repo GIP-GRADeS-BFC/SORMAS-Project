@@ -657,6 +657,7 @@ public class CaseService extends AbstractCoreAdoService<Case> {
 		if (caseCriteria.getDeleted() != null) {
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(from.get(Case.DELETED), caseCriteria.getDeleted()));
 		}
+		boolean unaccentedSearchEnabled = featureConfigurationFacade.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 		if (caseCriteria.getNameUuidEpidNumberLike() != null) {
 			String[] textFilters = caseCriteria.getNameUuidEpidNumberLike().split("\\s+");
 			for (String textFilter : textFilters) {
@@ -664,18 +665,34 @@ public class CaseService extends AbstractCoreAdoService<Case> {
 					continue;
 				}
 
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, facility.get(Facility.NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_TOKEN), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Case.HEALTH_FACILITY_DETAILS), textFilter),
-					phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, location.get(Location.CITY), textFilter),
-					CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, person.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, facility.get(Facility.NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_TOKEN), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, from.get(Case.HEALTH_FACILITY_DETAILS), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, location.get(Location.CITY), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, person.get(Person.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
+						CriteriaBuilderHelper.ilike(cb, facility.get(Facility.NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_TOKEN), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.HEALTH_FACILITY_DETAILS), textFilter),
+						phoneNumberPredicate(cb, person.get(Person.PHONE), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.CITY), textFilter),
+						CriteriaBuilderHelper.ilike(cb, location.get(Location.POSTAL_CODE), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
@@ -696,10 +713,18 @@ public class CaseService extends AbstractCoreAdoService<Case> {
 			if (hasEventLikeCriteria) {
 				String[] textFilters = caseCriteria.getEventLike().trim().split("\\s+");
 				for (String textFilter : textFilters) {
-					Predicate likeFilters = cb.or(
-						CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_DESC), textFilter),
-						CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_TITLE), textFilter),
-						CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					Predicate likeFilters;
+					if (unaccentedSearchEnabled) {
+						likeFilters = cb.or(
+							CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_DESC), textFilter),
+							CriteriaBuilderHelper.unaccentedIlike(cb, event.get(Event.EVENT_TITLE), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					} else {
+						likeFilters = cb.or(
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.EVENT_DESC), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.EVENT_TITLE), textFilter),
+							CriteriaBuilderHelper.ilike(cb, event.get(Event.UUID), textFilter));
+					}
 					filter = CriteriaBuilderHelper.and(cb, filter, likeFilters, cb.isFalse(eventParticipant.get(EventParticipant.DELETED)));
 				}
 			}
@@ -710,22 +735,40 @@ public class CaseService extends AbstractCoreAdoService<Case> {
 		if (caseCriteria.getReportingUserLike() != null) {
 			String[] textFilters = caseCriteria.getReportingUserLike().split("\\s+");
 			for (String textFilter : textFilters) {
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.USER_NAME), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.USER_NAME), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, reportingUser.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, reportingUser.get(User.USER_NAME), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
 		if (caseCriteria.getSourceCaseInfoLike() != null) {
 			String[] textFilters = caseCriteria.getSourceCaseInfoLike().split("\\s+");
 			for (String textFilter : textFilters) {
-				Predicate likeFilters = cb.or(
-					CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
-					CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.LAST_NAME), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
-					CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter));
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.unaccentedIlike(cb, reportingUser.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter));
+				} else {
+					likeFilters = cb.or(
+						CriteriaBuilderHelper.ilike(cb, reportingUser.get(User.FIRST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, reportingUser.get(User.LAST_NAME), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.UUID), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EPID_NUMBER), textFilter),
+						CriteriaBuilderHelper.ilike(cb, from.get(Case.EXTERNAL_ID), textFilter));
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}

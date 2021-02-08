@@ -19,6 +19,7 @@ package de.symeda.sormas.backend.region;
 
 import java.util.List;
 
+import javax.ejb.EJB;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
 import javax.persistence.TypedQuery;
@@ -31,16 +32,21 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import de.symeda.sormas.api.EntityRelevanceStatus;
+import de.symeda.sormas.api.feature.FeatureType;
 import de.symeda.sormas.api.region.CommunityCriteria;
 import de.symeda.sormas.api.region.CommunityReferenceDto;
 import de.symeda.sormas.api.region.DistrictReferenceDto;
 import de.symeda.sormas.api.utils.DataHelper;
 import de.symeda.sormas.backend.common.AbstractInfrastructureAdoService;
 import de.symeda.sormas.backend.common.CriteriaBuilderHelper;
+import de.symeda.sormas.backend.feature.FeatureConfigurationFacadeEjb.FeatureConfigurationFacadeEjbLocal;
 
 @Stateless
 @LocalBean
 public class CommunityService extends AbstractInfrastructureAdoService<Community> {
+
+	@EJB
+	private FeatureConfigurationFacadeEjbLocal featureConfigurationFacadeEjb;
 
 	public CommunityService() {
 		super(Community.class);
@@ -104,13 +110,19 @@ public class CommunityService extends AbstractInfrastructureAdoService<Community
 			filter = CriteriaBuilderHelper.and(cb, filter, cb.equal(district.get(District.UUID), criteria.getDistrict().getUuid()));
 		}
 		if (criteria.getNameLike() != null) {
+			boolean unaccentedSearchEnabled = featureConfigurationFacadeEjb.isFeatureEnabled(FeatureType.UNACCENTED_SEARCHES);
 			String[] textFilters = criteria.getNameLike().split("\\s+");
 			for (String textFilter : textFilters) {
 				if (DataHelper.isNullOrEmpty(textFilter)) {
 					continue;
 				}
 
-				Predicate likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, from.get(District.NAME), textFilter);
+				Predicate likeFilters;
+				if (unaccentedSearchEnabled) {
+					likeFilters = CriteriaBuilderHelper.unaccentedIlike(cb, from.get(District.NAME), textFilter);
+				} else {
+					likeFilters = CriteriaBuilderHelper.ilike(cb, from.get(District.NAME), textFilter);
+				}
 				filter = CriteriaBuilderHelper.and(cb, filter, likeFilters);
 			}
 		}
