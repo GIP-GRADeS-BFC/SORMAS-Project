@@ -65,6 +65,8 @@ public interface Strings {
 	String confirmationArchivePointsOfEntry = "confirmationArchivePointsOfEntry";
 	String confirmationArchiveRegion = "confirmationArchiveRegion";
 	String confirmationArchiveRegions = "confirmationArchiveRegions";
+	String confirmationArchiveTask = "confirmationArchiveTask";
+	String confirmationArchiveTasks = "confirmationArchiveTasks";
 	String confirmationCancelExternalFollowUpPopup = "confirmationCancelExternalFollowUpPopup";
 	String confirmationCancelFollowUp = "confirmationCancelFollowUp";
 	String confirmationChangeCaseDisease = "confirmationChangeCaseDisease";
@@ -90,6 +92,8 @@ public interface Strings {
 	String confirmationDearchivePointsOfEntry = "confirmationDearchivePointsOfEntry";
 	String confirmationDearchiveRegion = "confirmationDearchiveRegion";
 	String confirmationDearchiveRegions = "confirmationDearchiveRegions";
+	String confirmationDearchiveTask = "confirmationDearchiveTask";
+	String confirmationDearchiveTasks = "confirmationDearchiveTasks";
 	String confirmationDeleteCases = "confirmationDeleteCases";
 	String confirmationDeleteContacts = "confirmationDeleteContacts";
 	String confirmationDeleteEntity = "confirmationDeleteEntity";
@@ -464,6 +468,8 @@ public interface Strings {
 	String headingSurveillanceReports = "headingSurveillanceReports";
 	String headingSymptomJournalAccountCreation = "headingSymptomJournalAccountCreation";
 	String headingSyncUsers = "headingSyncUsers";
+	String headingTasksArchived = "headingTasksArchived";
+	String headingTasksDearchived = "headingTasksDearchived";
 	String headingTasksDeleted = "headingTasksDeleted";
 	String headingTemplateNotAvailable = "headingTemplateNotAvailable";
 	String headingTests = "headingTests";
@@ -814,7 +820,10 @@ public interface Strings {
 	String messageSymptomsVisitHint = "messageSymptomsVisitHint";
 	String messageSystemFollowUpCanceled = "messageSystemFollowUpCanceled";
 	String messageSystemFollowUpCanceledByDropping = "messageSystemFollowUpCanceledByDropping";
+	String messageTasksArchived = "messageTasksArchived";
+	String messageTasksDearchived = "messageTasksDearchived";
 	String messageTasksDeleted = "messageTasksDeleted";
+	String messageTasksEdited = "messageTasksEdited";
 	String messageTemplateNotAvailable = "messageTemplateNotAvailable";
 	String messageTreatmentCreated = "messageTreatmentCreated";
 	String messageTreatmentSaved = "messageTreatmentSaved";
