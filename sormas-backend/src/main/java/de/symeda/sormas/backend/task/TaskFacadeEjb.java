@@ -104,6 +104,7 @@ import de.symeda.sormas.backend.util.Pseudonymizer;
 @Stateless(name = "TaskFacade")
 public class TaskFacadeEjb implements TaskFacade {
 
+	private static final int ARCHIVE_BATCH_SIZE = 1000;
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	@PersistenceContext(unitName = ModelConstants.PERSISTENCE_UNIT_NAME)
@@ -728,6 +729,11 @@ public class TaskFacadeEjb implements TaskFacade {
 				}
 			}
 		}
+	}
+
+	@Override
+	public void updateArchived(List<String> taskUuids, boolean archived) {
+		IterableHelper.executeBatched(taskUuids, ARCHIVE_BATCH_SIZE, e -> taskService.updateArchived(e, archived));
 	}
 
 	@LocalBean

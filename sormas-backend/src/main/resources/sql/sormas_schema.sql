@@ -6822,4 +6822,10 @@ ALTER TABLE cases
 
 INSERT INTO schema_version (version_number, comment) VALUES (344, 'Add a "sampling reason" field in the sample #4555');
 
+-- 2020-03-03 Add archived to task #3430
+ALTER TABLE task ADD COLUMN archived boolean NOT NULL DEFAULT false;
+ALTER TABLE task_history ADD COLUMN archived boolean NOT NULL DEFAULT false;
+
+INSERT INTO schema_version (version_number, comment) VALUES (345, 'Add archived to task #3430');
+
 -- *** Insert new sql commands BEFORE this line ***
