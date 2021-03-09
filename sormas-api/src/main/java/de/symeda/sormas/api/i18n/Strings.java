@@ -118,6 +118,7 @@ public interface Strings {
 	String confirmationRemoveGridRowTitle = "confirmationRemoveGridRowTitle";
 	String confirmationRemoveUserAsOfficer = "confirmationRemoveUserAsOfficer";
 	String confirmationSuperordinateEventDiscardUnsavedChanges = "confirmationSuperordinateEventDiscardUnsavedChanges";
+	String confirmationUnlinkCaseFromEvent = "confirmationUnlinkCaseFromEvent";
 	String confirmationUpdateCompleteness = "confirmationUpdateCompleteness";
 	String confirmNetworkDiagramTooManyContacts = "confirmNetworkDiagramTooManyContacts";
 	String date = "date";
@@ -708,6 +709,7 @@ public interface Strings {
 	String messageEventParticipantsDeleted = "messageEventParticipantsDeleted";
 	String messageEventParticipantToCaseWithoutEventDisease = "messageEventParticipantToCaseWithoutEventDisease";
 	String messageEventParticipantToContactWithoutEventDisease = "messageEventParticipantToContactWithoutEventDisease";
+	String messageEventParticipationUnlinked = "messageEventParticipationUnlinked";
 	String messageEventsArchived = "messageEventsArchived";
 	String messageEventSaved = "messageEventSaved";
 	String messageEventsDearchived = "messageEventsDearchived";
